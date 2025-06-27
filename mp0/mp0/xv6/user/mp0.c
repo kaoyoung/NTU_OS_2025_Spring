@@ -2,11 +2,11 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 #include "kernel/fs.h"
+#define Maxlength 500
 
-char*
-fmtname(char *path)
+char* fmtname(char *path)
 {
-  static char buf[DIRSIZ+1];
+  static char buf[Maxlength];
   char *p;
 
   // Find first character after last slash.
@@ -22,8 +22,7 @@ fmtname(char *path)
   return buf;
 }
 
-void
-ls(char *path)
+void traverse(char *path)
 {
   char buf[512], *p;
   int fd;
@@ -70,16 +69,17 @@ ls(char *path)
   close(fd);
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
-  int i;
+    int pipe(int fd[2]);
+    int pid = fork();
 
-  if(argc < 2){
-    ls(".");
-    exit(0);
-  }
-  for(i=1; i<argc; i++)
-    ls(argv[i]);
-  exit(0);
+    if(pid > 0){
+
+    }
+    else{
+        traverse(argv[1], argv[2]);        
+    }
+
+    exit(0);  
 }
