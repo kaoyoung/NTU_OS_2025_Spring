@@ -2,27 +2,20 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 #include "kernel/fs.h"
-#define Maxlength 500
+#define Maxlength 512
 
-char* fmtname(char *path)
-{
-  static char buf[Maxlength];
-  char *p;
-
-  // Find first character after last slash.
-  for(p=path+strlen(path); p >= path && *p != '/'; p--)
-    ;
-  p++;
-
-  // Return blank-padded name.
-  if(strlen(p) >= DIRSIZ)
-    return p;
-  memmove(buf, p, strlen(p));
-  memset(buf+strlen(p), ' ', DIRSIZ-strlen(p));
-  return buf;
+unsigned char_occurance(char *path, char target){
+    unsigned occurance = 0;
+    for(int i=0; i<strlen(path); ++i){
+        if(path[i]==target){
+            ++occurance;
+        }
+    }
+    return occurance;
 }
 
-void traverse(char *path)
+
+void traverse(char *path, char *target)
 {
   char buf[512], *p;
   int fd;
@@ -42,7 +35,7 @@ void traverse(char *path)
 
   switch(st.type){
   case T_FILE:
-    printf("%s %d %d %l\n", fmtname(path), st.type, st.ino, st.size);
+    printf("%s %u\n", path, char_occurance(path, target));
     break;
 
   case T_DIR:
@@ -50,22 +43,26 @@ void traverse(char *path)
       printf("ls: path too long\n");
       break;
     }
+
     strcpy(buf, path);
     p = buf+strlen(buf);
     *p++ = '/';
     while(read(fd, &de, sizeof(de)) == sizeof(de)){
-      if(de.inum == 0)
-        continue;
-      memmove(p, de.name, DIRSIZ);
-      p[DIRSIZ] = 0;
-      if(stat(buf, &st) < 0){
-        printf("ls: cannot stat %s\n", buf);
-        continue;
-      }
-      printf("%s %d %d %d\n", fmtname(buf), st.type, st.ino, st.size);
+        if(de.inum == 0)
+            continue;
+        memmove(p, de.name, DIRSIZ);
+        p[DIRSIZ] = 0;
+        if(stat(buf, &st) < 0){
+            printf("ls: cannot stat %s\n", buf);
+            continue;
+        }
+        printf("%s %u\n", buf, char_occurance(buf, target));
+        traverse(path, target);
     }
+
     break;
   }
+
   close(fd);
 }
 
