@@ -15,7 +15,7 @@ unsigned char_occurance(char *path, char target){
 }
 
 
-void traverse(char *path, char *target)
+void traverse(char *path, char *target, int *p_num_file, int *p_num_dir)
 {
   char buf[512], *p;
   int fd;
@@ -35,10 +35,12 @@ void traverse(char *path, char *target)
 
   switch(st.type){
   case T_FILE:
+    *p_num_file +=1;
     printf("%s %u\n", path, char_occurance(path, target));
     break;
 
   case T_DIR:
+    *p_num_dir +=1;
     if(strlen(path) + 1 + DIRSIZ + 1 > sizeof buf){
       printf("ls: path too long\n");
       break;
@@ -57,7 +59,7 @@ void traverse(char *path, char *target)
             continue;
         }
         printf("%s %u\n", buf, char_occurance(buf, target));
-        traverse(path, target);
+        traverse(path, target, p_num_file, p_num_dir);
     }
 
     break;
@@ -68,14 +70,34 @@ void traverse(char *path, char *target)
 
 int main(int argc, char *argv[])
 {
-    int pipe(int fd[2]);
+    int fd[2];
+    int pipe(fd);
     int pid = fork();
+    int *pc_num_file;
+    int *pc_num_dir;
 
     if(pid > 0){
+      close(fd[1]);
 
+      int *pp_num_file;
+      int *pp_num_dir;
+      read(fd[0], pp_num_file, 12);
+      read(fd[0], pp_num_dir, 12);
+
+      printf("%d directories, %d files\n");
     }
     else{
-        traverse(argv[1], argv[2]);        
+      close(fd[0]);
+
+      int num_file = 0;
+      int *pc_num_file = &num_file;
+      int num_dir = 0;
+      int *pc_num_dir = &num_dir;
+      traverse(argv[1], argv[2], pc_num_file, pc_num_dir);      
+
+      write(fd[1], pc_num_file, 12);
+      write(fd[1], pc_num_dir, 12);
+      
     }
 
     exit(0);  
