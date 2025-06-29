@@ -2,7 +2,7 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 #include "kernel/fs.h"
-#define Maxlength 512
+#define MAXLENGTH 512
 
 int char_occurance(char *path, char *target){
     int occurance = 0;
@@ -15,70 +15,65 @@ int char_occurance(char *path, char *target){
 }
 
 
-void traverse(char *path, char *target, int *p_num_file, int *p_num_dir)
-{
-  char buf[512], *p;
-  int fd;
-  struct dirent de;
-  struct stat st;
+void traverse(char *path, char *target, int *num_dir, int *num_file){
+    int fd = 0;
+    struct dirent de;
+    struct stat st;
+    char buf[MAXLENGTH];
+    char *p;
 
-  if((fd = open(path, 0)) < 0){
-    fprintf(2, "%s [error opening dir]\n", path);
-    return;
-  }
-
-  if(fstat(fd, &st) < 0){
-    fprintf(2, "ls: cannot stat %s\n", path);
-    close(fd);
-    return;
-  }
-
-
-  switch(st.type){
-  case T_FILE:
-    *p_num_file +=1;
-    printf("%s %d\n", path, char_occurance(path, target));
-    break;
-
-  case T_DIR:
-    *p_num_dir +=1;
-    if(strlen(path) + 1 + DIRSIZ + 1 > sizeof buf){
-      printf("ls: path too long\n");
-      break;
+    if((fd = open(path, 0)) <0){
+      fprintf("%s [error opening dir]\n", path);
+      exit(1);
     }
 
-    strcpy(buf, path);
-    p = buf+strlen(buf);
-    printf("%s %d\n", buf, char_occurance(buf, target));
-    *p++ = '/';
-    
-    while(read(fd, &de, sizeof(de)) == sizeof(de)){
-        if(de.inum == 0)
-            continue;
-        if(strcmp(de.name, ".") == 0 || strcmp(de.name, "..") == 0)
-            continue;
-        memmove(p, de.name, DIRSIZ);
-        p[DIRSIZ] = 0;
-        if(stat(buf, &st) < 0){
-            printf("ls: cannot stat %s\n", buf);
-            continue;
+    if(fstat(fd, &st) < 0){
+      fprintf("%s [error opening dir]\n", path);
+      exit(1);
+    }
+
+    switch(st.type){
+      case T_FILE:
+        ++*num_file;
+        printf("%s %d\n", path, char_occurance(path, target));
+        break;
+      case T_DIR:
+        ++*num_dir;
+        if(strlen(path) + 1 + DIRSIZ + 1 > sizeof buf){
+          printf("ls: path too long\n");
+          break;
         }
-        
-        traverse(buf, target, p_num_file, p_num_dir);
-    }
+
+        strcpy(buf, path);
+        p = buf+strlen(buf);
+        printf("%s %d\n", buf, char_occurance(buf, target));
+        *p++ = '/';
+    
+        while(read(fd, &de, sizeof(de)) == sizeof(de)){
+            if(de.inum == 0)
+                continue;
+            if(strcmp(de.name, ".") == 0 || strcmp(de.name, "..") == 0)
+                continue;
+            memmove(p, de.name, DIRSIZ);
+            p[DIRSIZ] = 0;
+            if(stat(buf, &st) < 0){
+                printf("ls: cannot stat %s\n", buf);
+                continue;
+            }        
+            raverse(buf, target, num_dir, num_file);
+        }
 
     break;
   }
-
-  close(fd);
 }
+
 
 int main(int argc, char *argv[])
 {
     int pipe_fd[2];
     pipe(pipe_fd);  
     
-    if(pipe(pipe_fd) == -1){
+    if(pipe(pipe_fd) < 0){
         //  perror("pipe");
         exit(1);
     }
@@ -106,7 +101,7 @@ int main(int argc, char *argv[])
     }
     else{
         close(pipe_fd[0]);
-        traverse(argv[1], argv[2], &num_file, &num_dir);    
+        traverse(argv[1], argv[2], &num_dir, &num_file);    
 
         num_dir = (num_dir==0)?   1:num_dir;
         buf[0] = (num_dir-1) + '0';
