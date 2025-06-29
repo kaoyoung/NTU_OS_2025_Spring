@@ -23,12 +23,13 @@ void traverse(char *path, char *target, int *num_dir, int *num_file){
     char *p;
 
     if((fd = open(path, 0)) <0){
-      fprintf("%s [error opening dir]\n", path);
+      fprintf(2, "%s [error opening dir]\n", path);
       exit(1);
     }
 
     if(fstat(fd, &st) < 0){
-      fprintf("%s [error opening dir]\n", path);
+      fprintf(2, "%s [error opening dir]\n", path);
+      close(fd);
       exit(1);
     }
 
@@ -47,70 +48,70 @@ void traverse(char *path, char *target, int *num_dir, int *num_file){
         strcpy(buf, path);
         p = buf+strlen(buf);
         printf("%s %d\n", buf, char_occurance(buf, target));
-        *p++ = '/';
+        *p = '/';
+        ++p;
     
         while(read(fd, &de, sizeof(de)) == sizeof(de)){
             if(de.inum == 0)
                 continue;
             if(strcmp(de.name, ".") == 0 || strcmp(de.name, "..") == 0)
                 continue;
+
+            memset(p, ' ', DIRSIZ);
             memmove(p, de.name, DIRSIZ);
             p[DIRSIZ] = 0;
             if(stat(buf, &st) < 0){
                 printf("ls: cannot stat %s\n", buf);
                 continue;
-            }        
-            raverse(buf, target, num_dir, num_file);
+            }    
+            traverse(buf, target, num_dir, num_file);
         }
-
-    break;
-  }
+        break;
+    }
+    close(fd);
 }
 
 
-int main(int argc, char *argv[])
-{
-    int pipe_fd[2];
-    pipe(pipe_fd);  
+int main(int argc, char *argv[]) {
+  if(argc != 3) {
+    printf("Usage: %s <root_directory> <key>\n", argv[0]);
+    exit(1);
+  }
+  
+  int p[2];
+  if(pipe(p) < 0) {
+    printf("Error: pipe failed\n");
+    exit(1);
+  }
+
+  int pid = fork();
+  if(pid < 0) {
+    printf("Error: fork failed\n");
+    exit(1);
+  } 
+  else if(pid > 0) {
+    close(p[1]);
+    int dir_count, file_count;
+    read(p[0], &dir_count, sizeof(dir_count));
+    read(p[0], &file_count, sizeof(file_count));
+    wait((int *)0);
+    printf("\n");   
+    printf("%d directories, %d files\n", dir_count, file_count);
+    close(p[0]);  
+  } 
+  else {  
+    close(p[0]);
+    int dir_num = 0;
+    int file_num = 0;    
+    traverse(argv[1], argv[2], &dir_num, &file_num);
+
+    --dir_num;
+    dir_num = (dir_num<0)? 0:dir_num;
+    write(p[1], &dir_num, sizeof(dir_num));
+    write(p[1], &file_num, sizeof(file_num));    
+    close(p[1]); 
     
-    if(pipe(pipe_fd) < 0){
-        //  perror("pipe");
-        exit(1);
-    }
-    
-    char buf[2];
-    int num_file = 0;
-    int num_dir = 0;
-    int pid = fork();
-    if(pid < 0){
-        //  perror("fork");
-        exit(1);
-    }
-    else if(pid > 0){
-        close(pipe_fd[1]);
-        char result[2];
-        read(pipe_fd[0], result, 2);
-
-        int file_dir = result[0] - '0';
-        int file_file = result[1] - '0';
-        printf("\n");
-        printf("%d directories, %d files\n", file_dir, file_file);
-        close(pipe_fd[0]);
-
-        wait(0);
-    }
-    else{
-        close(pipe_fd[0]);
-        traverse(argv[1], argv[2], &num_dir, &num_file);    
-
-        num_dir = (num_dir==0)?   1:num_dir;
-        buf[0] = (num_dir-1) + '0';
-        buf[1] = num_file + '0';
-        write(pipe_fd[1], buf, 2);  
-      
-        close(pipe_fd[1]);
-        exit(0);
-    }
-
-    return 0; 
+    exit(0);    
+  }
+  exit(0); 
 }
