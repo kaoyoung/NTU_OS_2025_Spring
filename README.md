@@ -12,7 +12,7 @@
 - Inode Bitmap: Used to track which inodes are allocated and which are free.
 - Inode Blocks: Store all inodes. Each inode contains metadata for a file or directory
 - Data Blocks: Store the actual file data or directory contents. 
-...
+- etc...
 3. In-Memory Kernel Data Structures
 - inode (In-memory inode): This is the in-memory representation of an on-disk inode. When a file or directory is accessed, its corresponding on-disk inode is read into memory, becoming a struct inode. It contains all the information from the disk inode, plus some additional memory management information (like a reference count).
 
@@ -69,11 +69,11 @@ It  represents a single entry within a directory. When you read the contents of 
 #### How they work together (typical way)
 1. Open the directory: You use opendir(const char *name) to get a DIR* pointer (which internally holds an fd for the directory).
 
-2.Read directory entries: You enter a loop, calling readdir(DIR *dirp) repeatedly. Each call returns a struct dirent * (a pointer to a dirent structure) for the next entry in the directory. You'll primarily extract the d_name from this dirent.
+2.  Read directory entries: You enter a loop, calling readdir(DIR *dirp) repeatedly. Each call returns a struct dirent * (a pointer to a dirent structure) for the next entry in the directory. You'll primarily extract the d_name from this dirent.
 
-3.Get file/entry status: For each d_name you get, if you need more details about that specific file or subdirectory (like its size, permissions, or to confirm its exact type beyond d_type), you construct its full path (e.g., "parent_dir/file_name") and then call stat(full_path, &st) to populate a struct stat variable.
+3.  Get file/entry status: For each d_name you get, if you need more details about that specific file or subdirectory (like its size, permissions, or to confirm its exact type beyond d_type), you construct its full path (e.g., "parent_dir/file_name") and then call stat(full_path, &st) to populate a struct stat variable.
 
-4.Process information: You then use the information in the struct stat (e.g., st.st_mode to check if it's a directory for recursive listing, or st.st_size to display its size) to perform further actions.
+4.  Process information: You then use the information in the struct stat (e.g., st.st_mode to check if it's a directory for recursive listing, or st.st_size to display its size) to perform further actions.
 
 5.Close the directory: Once done, you call closedir(DIR *dirp) to release the resources associated with the opened directory.
 
