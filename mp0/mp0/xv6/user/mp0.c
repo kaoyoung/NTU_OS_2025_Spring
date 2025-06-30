@@ -15,7 +15,7 @@ int char_occurance(char *path, char *target){
 }
 
 
-void traverse(char *path, char *target, int *num_dir, int *num_file){
+void traverse(char *path, char *target, int *num_dir, int *num_file, int *is_root){
     int fd = 0;
     struct stat st;
     if((fd = open(path, 0)) < 0){
@@ -31,12 +31,19 @@ void traverse(char *path, char *target, int *num_dir, int *num_file){
 
     switch(st.type){
     case T_FILE:
-      ++(*num_file);
-      printf("%s %d\n", path, char_occurance(path, target));
+      if(*is_root == 1){
+        printf("%s [error opening dir]\n", path);
+      }
+      else{
+        ++(*num_file);
+        printf("%s %d\n", path, char_occurance(path, target));
+      }      
+      *is_root = 0;
       break;
 
     case T_DIR:
-      ++(*num_dir);
+      (*num_dir) = (*is_root == 1)? 0:(*num_dir+1);
+      *is_root = 0;
       printf("%s %d\n", path, char_occurance(path, target));
 
       char buf[MAXLENGTH];
@@ -58,8 +65,8 @@ void traverse(char *path, char *target, int *num_dir, int *num_file){
           exit(1);
         }
         memset(p, ' ', DIRSIZ);
-        memmove(p, de.name, DIRSIZ);
-        traverse(buf, target, num_dir, num_file);
+        memmove(p, de.name, DIRSIZ);        
+        traverse(buf, target, num_dir, num_file, is_root);
       }
       break;
     
@@ -69,7 +76,7 @@ void traverse(char *path, char *target, int *num_dir, int *num_file){
     }
 
     close(fd);
-    exit(0); 
+    return;
 }
 
 
@@ -94,18 +101,20 @@ int main(int argc, char *argv[]) {
     close(pipe_fd[1]);
     int num_dir = 0;
     int num_file = 0;   
-    write(pipe_fd[0], &num_dir, sizeof(num_dir));
-    write(pipe_fd[0], &num_file, sizeof(num_file));
+    read(pipe_fd[0], &num_dir, sizeof(num_dir));
+    read(pipe_fd[0], &num_file, sizeof(num_file));
     wait(0);
 
-    printf("%d directories, %d files", num_dir, num_file);
+    printf("\n");
+    printf("%d directories, %d files\n", num_dir, num_file);
     close(pipe_fd[0]);
   }
   else{
     close(pipe_fd[0]);
     int num_dir = 0;
     int num_file = 0;
-    traverse(argv[1], argv[2], &num_dir, &num_file);
+    int is_root = 1;
+    traverse(argv[1], argv[2], &num_dir, &num_file, &is_root);
 
     write(pipe_fd[1], &num_dir, sizeof(num_dir));
     write(pipe_fd[1], &num_file, sizeof(num_file));
